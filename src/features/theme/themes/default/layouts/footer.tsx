@@ -22,6 +22,16 @@ export function Footer({ navOptions }: FooterProps) {
               year: new Date().getFullYear().toString(),
               author: siteConfig.author,
             })}
+
+             <a
+    href="https://icp.gov.moe/?keyword=20260550"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:text-foreground"
+  >
+    萌ICP备20260550号
+  </a>
+            
           </span>
         </div>
 
