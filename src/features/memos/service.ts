@@ -1,5 +1,5 @@
 /**
- * Memos 数据服务
+ * Memos 数据服务 - 支持图片展示
  */
 
 import { memosConfig } from "./config";
@@ -20,9 +20,34 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
 
 /**
  * 将 Memos 转换为说说格式
+ * 透传源站图片直链: https://moment.ssaw.top/file/attachments/{id}/{filename}
  */
 function convertMemoToPost(memo: MemosMemo): MemosPost {
   const id = parseInt(memo.name.split("/")[1] || "0", 10) || Date.now();
+  
+  // 从 attachments 获取图片 - 透传源站直链
+  const images: string[] = [];
+  const attachments = (memo as any).attachments || [];
+  
+  for (const attachment of attachments) {
+    if (attachment.type && attachment.type.startsWith("image/")) {
+      // 使用源站直链格式
+      const attachmentId = (attachment.name || "").replace("attachments/", "");
+      const filename = attachment.filename || "";
+      if (attachmentId && filename) {
+        // 透传源站 URL: https://moment.ssaw.top/file/attachments/{id}/{filename}
+        images.push(`${memosConfig.apiBaseUrl}/file/attachments/${attachmentId}/${filename}`);
+      }
+    }
+  }
+  
+  // 从内容中提取 Markdown 图片
+  const mdImages = extractMarkdownImages(memo.content);
+  for (const img of mdImages) {
+    if (!images.includes(img)) {
+      images.push(img);
+    }
+  }
   
   return {
     id,
@@ -32,7 +57,21 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
     updatedAt: new Date(memo.updateTime),
     tags: memo.tags,
     pinned: memo.pinned,
+    images,
   };
+}
+
+/**
+ * 从 Markdown 内容中提取图片 URL
+ */
+function extractMarkdownImages(content: string): string[] {
+  const images: string[] = [];
+  const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    images.push(match[2]);
+  }
+  return images;
 }
 
 /**
