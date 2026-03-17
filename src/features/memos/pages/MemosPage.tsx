@@ -1,7 +1,7 @@
 /**
  * 说说页面组件
  * 
- * 独立页面渲染 Memos 说说
+ * 独立页面渲染 Memos 说说，支持图片展示
  */
 
 import { Link } from "@tanstack/react-router";
@@ -63,6 +63,9 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
   // 处理内容，支持简单的换行
   const contentLines = memo.content.split("\n");
 
+  // 获取图片列表
+  const images = (memo as any).images || [];
+
   return (
     <article className="relative pl-8">
       {/* 时间线 */}
@@ -103,6 +106,28 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
             );
           })}
         </div>
+
+        {/* 图片展示 - 透传源站直链 */}
+        {images.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-3">
+            {images.map((imgUrl: string, index: number) => (
+              <a
+                key={index}
+                href={imgUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block aspect-square overflow-hidden rounded-lg bg-muted hover:opacity-90 transition-opacity"
+              >
+                <img
+                  src={imgUrl}
+                  alt={`图片 ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* 标签 */}
         {memo.tags.length > 0 && (
