@@ -23,22 +23,11 @@ function formatDate(date: Date): string {
  * 处理内容：移除标签、保留换行
  */
 function processContent(content: string): string {
-  // 移除 #tag 格式的标签
   const lines = content.split("\n");
-  const processedLines = lines.map(line => {
-    // 移除行首的标签（如 #tag）
+  const processedLines = lines.map((line) => {
     return line.replace(/^#\S+(\s|$)/, "").trim();
   });
   return processedLines.join("\n").trim();
-}
-
-/**
- * 点击文件打开
- */
-function handleFileClick(url: string) {
-  if (typeof window !== "undefined") {
-    window.open(url, "_blank");
-  }
 }
 
 /**
@@ -49,17 +38,14 @@ function MemosItem({ memo }: { memo: MemosPost }) {
   const [imageUrl, setImageUrl] = useState("");
   
   const processedContent = processContent(memo.content);
+  const images = memo.images || [];
+  const files = (memo as any).files || [];
   
-  // 获取图片列表
-  const images = (memo as any).images || [];
-  
-  // 点击图片打开预览
   const handleImageClick = (url: string) => {
     setImageUrl(url);
     setIsOpen(true);
   };
   
-  // 图片预览弹窗
   const ImageModal = () => {
     if (!isOpen) return null;
     
@@ -87,12 +73,10 @@ function MemosItem({ memo }: { memo: MemosPost }) {
   return (
     <>
       <article className="relative pl-8">
-        {/* 时间线 */}
         <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
         <div className="absolute left-[-3px] top-2 w-2 h-2 rounded-full bg-foreground/30" />
         
         <div className="space-y-3">
-          {/* 元信息 */}
           <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground/60">
             <time dateTime={memo.createdAt.toISOString()}>
               {formatDate(memo.createdAt)}
@@ -102,7 +86,6 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             )}
           </div>
           
-          {/* 内容 - 使用 pre 保留换行 */}
           <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
             {processedContent}
           </div>
@@ -127,10 +110,28 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             </div>
           )}
           
+          {/* 文件列表 */}
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {files.map((file, index) => (
+                <a
+                  key={index}
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
+                >
+                  <span className="text-base">📎</span>
+                  <span>{file.name}</span>
+                </a>
+              ))}
+            </div>
+          )}
+          
           {/* 标签 */}
           {memo.tags && memo.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {memo.tags.filter(t => !t.startsWith("#")).map((tag, index) => (
+              {memo.tags.filter((t) => !t.startsWith("#")).map((tag, index) => (
                 <span 
                   key={index}
                   className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground"
