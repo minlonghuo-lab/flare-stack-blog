@@ -18,6 +18,14 @@ export const MemosMemoSchema = z.object({
   visibility: z.enum(["PUBLIC", "PRIVATE", "PROTECTED"]),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  // attachments 包含上传的图片
+  attachments: z.array(z.object({
+    id: z.string(),
+    filename: z.string(),
+    uri: z.string(),
+    type: z.string(),
+    size: z.number(),
+  })).optional(),
 });
 
 export const MemosResponseSchema = z.object({
@@ -36,6 +44,14 @@ export const MemosPostSchema = z.object({
   updatedAt: z.date(),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  // 提取的图片 URL
+  images: z.array(z.string()),
+  // 上传的图片附件
+  attachments: z.array(z.object({
+    id: z.string(),
+    filename: z.string(),
+    uri: z.string(),
+  })),
 });
 
 export type MemosMemo = z.infer<typeof MemosMemoSchema>;
