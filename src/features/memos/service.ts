@@ -1,5 +1,5 @@
 /**
- * Memos 数据服务
+ * Memos 数据服务 - 支持图片展示
  */
 
 import { memosConfig } from "./config";
@@ -20,9 +20,31 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
 
 /**
  * 将 Memos 转换为说说格式
+ * 支持从 attachments 获取上传的图片
  */
 function convertMemoToPost(memo: MemosMemo): MemosPost {
   const id = parseInt(memo.name.split("/")[1] || "0", 10) || Date.now();
+  
+  // 从 attachments 获取图片（方式1：通过后台上传）
+  const images: string[] = [];
+  const attachments = memo.attachments || [];
+  
+  for (const attachment of attachments) {
+    // 检查是否是图片类型
+    if (attachment.type.startsWith("image/")) {
+      // 使用 Memos 的内部 URI
+      images.push(attachment.uri);
+    }
+  }
+  
+  // 同时也支持从内容中提取图片 URL（方式2：粘贴 URL）
+  // 从内容中提取图片 URL
+  const contentImages = extractImagesFromContent(memo.content);
+  for (const img of contentImages) {
+    if (!images.includes(img)) {
+      images.push(img);
+    }
+  }
   
   return {
     id,
@@ -32,7 +54,54 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
     updatedAt: new Date(memo.updateTime),
     tags: memo.tags,
     pinned: memo.pinned,
+    images,
+    attachments: attachments.map(a => ({
+      id: a.id,
+      filename: a.filename,
+      uri: a.uri,
+    })),
   };
+}
+
+/**
+ * 从内容中提取图片 URL
+ * 支持格式：
+ * - ![alt](url)
+ * - <img src="url">
+ * - 纯 URL（jpg, png, gif, webp 结尾）
+ */
+function extractImagesFromContent(content: string): string[] {
+  const images: string[] = [];
+  
+  // Markdown 图片语法 ![alt](url)
+  const mdMatch = content.match(/!\[([^\]]*)\]\(([^)]+)\)/g);
+  if (mdMatch) {
+    for (const m of mdMatch) {
+      const url = m.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
+      if (url) images.push(url);
+    }
+  }
+  
+  // HTML img 标签
+  const htmlMatch = content.match(/<img[^>]+src=["']([^"']+)["']/gi);
+  if (htmlMatch) {
+    for (const m of htmlMatch) {
+      const url = m.match(/src=["']([^"']+)["']/)?.[1];
+      if (url) images.push(url);
+    }
+  }
+  
+  // 直接的图片 URL
+  const urlMatch = content.match(/(https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|bmp|svg))/gi);
+  if (urlMatch) {
+    for (const url of urlMatch) {
+      if (!images.includes(url)) {
+        images.push(url);
+      }
+    }
+  }
+  
+  return images;
 }
 
 /**
