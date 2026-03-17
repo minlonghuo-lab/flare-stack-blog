@@ -1,5 +1,5 @@
 /**
- * Memos 数据服务 - 支持图片展示
+ * Memos 数据服务 - 支持图片和文件展示
  */
 
 import { memosConfig } from "./config";
@@ -20,24 +20,34 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
 
 /**
  * 将 Memos 转换为说说格式
- * 透传源站图片直链: https://moment.ssaw.top/file/attachments/{id}/{filename}
+ * 支持图片和文件（zip、md等）展示
  */
 function convertMemoToPost(memo: MemosMemo): MemosPost {
   const id = parseInt(memo.name.split("/")[1] || "0", 10) || Date.now();
   
-  // 从 attachments 获取图片 - 透传源站直链
+  // 处理附件
   const images: string[] = [];
+  const fileLinks: { name: string; url: string; type: string }[] = [];
   const attachments = (memo as any).attachments || [];
   
   for (const attachment of attachments) {
+    const attachmentId = (attachment.name || "").replace("attachments/", "");
+    const filename = attachment.filename || "";
+    if (!attachmentId || !filename) continue;
+    
+    // 构建直链 URL
+    const fileUrl = `${memosConfig.apiBaseUrl}/file/attachments/${attachmentId}/${encodeURIComponent(filename)}`;
+    
     if (attachment.type && attachment.type.startsWith("image/")) {
-      // 使用源站直链格式
-      const attachmentId = (attachment.name || "").replace("attachments/", "");
-      const filename = attachment.filename || "";
-      if (attachmentId && filename) {
-        // 透传源站 URL: https://moment.ssaw.top/file/attachments/{id}/{filename}
-        images.push(`${memosConfig.apiBaseUrl}/file/attachments/${attachmentId}/${filename}`);
-      }
+      // 图片
+      images.push(fileUrl);
+    } else {
+      // 非图片文件
+      fileLinks.push({
+        name: filename,
+        url: fileUrl,
+        type: attachment.type || "application/octet-stream",
+      });
     }
   }
   
@@ -49,10 +59,19 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
     }
   }
   
+  // 处理内容：如果有文件，追加文件链接列表
+  let content = memo.content;
+  if (fileLinks.length > 0) {
+    const fileListHtml = fileLinks
+      .map(f => `<a href="${f.url}" target="_blank" class="memo-file">📎 ${f.name}</a>`)
+      .join("\n");
+    content = content + "\n\n" + fileListHtml;
+  }
+  
   return {
     id,
     slug: `memos-${id}`,
-    content: memo.content,
+    content,
     createdAt: new Date(memo.createTime),
     updatedAt: new Date(memo.updateTime),
     tags: memo.tags,
