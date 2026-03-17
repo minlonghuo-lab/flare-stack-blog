@@ -18,6 +18,7 @@ export const MemosMemoSchema = z.object({
   visibility: z.enum(["PUBLIC", "PRIVATE", "PROTECTED"]),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  attachments: z.array(z.any()).optional(),
 });
 
 export const MemosResponseSchema = z.object({
@@ -36,6 +37,7 @@ export const MemosPostSchema = z.object({
   updatedAt: z.date(),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  images: z.array(z.string()).optional(),
 });
 
 export type MemosMemo = z.infer<typeof MemosMemoSchema>;
