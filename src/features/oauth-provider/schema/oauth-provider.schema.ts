@@ -4,6 +4,7 @@ import type { OAuthScope } from "../oauth-provider.config";
 import { OAUTH_BLOG_SCOPE_GROUPS } from "../oauth-provider.config";
 
 export const OAuthScopeRequestSchema = z.object({
+  analytics: z.array(z.enum(OAUTH_BLOG_SCOPE_GROUPS.analytics)).optional(),
   comments: z.array(z.enum(OAUTH_BLOG_SCOPE_GROUPS.comments)).optional(),
   "friend-links": z
     .array(z.enum(OAUTH_BLOG_SCOPE_GROUPS["friend-links"]))

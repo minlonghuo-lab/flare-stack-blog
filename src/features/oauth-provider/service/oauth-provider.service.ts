@@ -71,6 +71,33 @@ export function extractBearerToken(authorization?: string | null) {
   return authorization.trim() || null;
 }
 
+export function summarizeAuthorizationHeader(authorization?: string | null) {
+  if (!authorization) {
+    return {
+      present: false,
+      scheme: null,
+      rawLength: 0,
+      tokenLength: 0,
+      tokenSegmentCount: 0,
+      looksLikeJwt: false,
+    };
+  }
+
+  const trimmedAuthorization = authorization.trim();
+  const [scheme = null, ...rest] = trimmedAuthorization.split(/\s+/);
+  const token = rest.join(" ").trim();
+  const tokenSegmentCount = token ? token.split(".").length : 0;
+
+  return {
+    present: true,
+    scheme,
+    rawLength: trimmedAuthorization.length,
+    tokenLength: token.length,
+    tokenSegmentCount,
+    looksLikeJwt: tokenSegmentCount === 3,
+  };
+}
+
 export function parseOAuthScopes(scopeClaim: unknown): OAuthScope[] {
   if (typeof scopeClaim !== "string" || !scopeClaim.length) {
     return [];

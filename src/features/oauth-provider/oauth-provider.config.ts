@@ -14,6 +14,7 @@ const OAUTH_STANDARD_SCOPE_VALUES = [
 ] as const;
 
 export const OAUTH_BLOG_SCOPE_GROUPS = {
+  analytics: ["read"],
   posts: ["read", "write"],
   comments: ["read", "write"],
   media: ["read", "write"],

@@ -1,4 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { proxy } from "hono/proxy";
 import { exportDownloadRoute } from "@/features/import-export/api/hono/download.route";
@@ -24,6 +25,11 @@ import {
 export const app = new Hono<{ Bindings: Env }>();
 
 app.get("*", cacheMiddleware);
+
+async function forwardAuthRequest(c: Context<{ Bindings: Env }>) {
+  const auth = c.get("auth");
+  return auth.handler(c.req.raw);
+}
 
 /* ================================ Public API ================================ */
 
@@ -90,10 +96,7 @@ app.get("/images/:key{.+}", async (c) => {
   }
 });
 
-app.get("/api/auth/*", baseMiddleware, (c) => {
-  const auth = c.get("auth");
-  return auth.handler(c.req.raw);
-});
+app.get("/api/auth/*", baseMiddleware, forwardAuthRequest);
 
 const protectedAuthPaths = [
   "/api/auth/sign-in/email",
@@ -118,10 +121,7 @@ protectedAuthPaths.forEach((path) => {
       interval: "1h",
       identifier: (c) => `hourly:${createRateLimiterIdentifier(c)}`,
     }),
-    (c) => {
-      const auth = c.get("auth");
-      return auth.handler(c.req.raw);
-    },
+    forwardAuthRequest,
   );
 });
 
@@ -133,10 +133,7 @@ app.post(
     interval: "1m",
     identifier: createRateLimiterIdentifier,
   }),
-  (c) => {
-    const auth = c.get("auth");
-    return auth.handler(c.req.raw);
-  },
+  forwardAuthRequest,
 );
 
 // Admin export download route

@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { mcpAnalyticsTools } from "../features/analytics";
 import { mcpCommentsTools } from "../features/comments";
 import { mcpFriendLinksTools } from "../features/friend-links";
 import { mcpMediaTools } from "../features/media";
@@ -10,6 +11,7 @@ import type { McpToolDefinition } from "./mcp-tool";
 import { registerMcpTool } from "./mcp-tool";
 
 const MCP_TOOLS: McpToolDefinition[] = [
+  ...mcpAnalyticsTools,
   ...mcpCommentsTools,
   ...mcpFriendLinksTools,
   ...mcpMediaTools,

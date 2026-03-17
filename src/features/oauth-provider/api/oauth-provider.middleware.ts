@@ -11,6 +11,7 @@ import {
   createOAuthPrincipal,
   extractBearerToken,
   getOAuthProtectedResourceMetadataUrl,
+  summarizeAuthorizationHeader,
 } from "../service/oauth-provider.service";
 
 declare module "hono" {
@@ -19,16 +20,40 @@ declare module "hono" {
   }
 }
 
+function getAuthorizationLogPayload(authorization?: string | null) {
+  return summarizeAuthorizationHeader(authorization);
+}
+
 function createOAuthErrorResponse(
   c: Context<{ Bindings: Env }>,
   error: unknown,
   fallbackStatus: 401 | 403 = 401,
 ) {
+  const authorization = c.req.header("authorization");
+
   if (error instanceof APIError) {
     const message =
       typeof error.body?.message === "string"
         ? error.body.message
         : "Unauthorized";
+
+    console.error(
+      JSON.stringify({
+        message: "oauth access token verification api error",
+        error: {
+          body: error.body,
+          headers: error.headers,
+          message,
+          status: error.status,
+          statusCode: error.statusCode,
+        },
+        request: {
+          method: c.req.method,
+          url: c.req.url,
+        },
+        authorization: getAuthorizationLogPayload(authorization),
+      }),
+    );
 
     return new Response(
       JSON.stringify({
@@ -49,6 +74,11 @@ function createOAuthErrorResponse(
     JSON.stringify({
       message: "oauth access token verification failed",
       error: error instanceof Error ? error.message : String(error),
+      request: {
+        method: c.req.method,
+        url: c.req.url,
+      },
+      authorization: getAuthorizationLogPayload(authorization),
     }),
   );
 
@@ -65,9 +95,21 @@ export const oauthAccessTokenMiddleware = (
   requiredScopes: OAuthScope[] | OAuthScopeRequest = [],
 ) =>
   createMiddleware<{ Bindings: Env }>(async (c, next) => {
-    const accessToken = extractBearerToken(c.req.header("authorization"));
+    const authorization = c.req.header("authorization");
+    const accessToken = extractBearerToken(authorization);
 
     if (!accessToken) {
+      console.error(
+        JSON.stringify({
+          message: "oauth access token missing bearer token",
+          request: {
+            method: c.req.method,
+            url: c.req.url,
+          },
+          authorization: getAuthorizationLogPayload(authorization),
+        }),
+      );
+
       c.header(
         "WWW-Authenticate",
         `Bearer resource_metadata="${getOAuthProtectedResourceMetadataUrl(c.req.url)}"`,
@@ -83,6 +125,7 @@ export const oauthAccessTokenMiddleware = (
 
     try {
       const jwt = await verifyOAuthAccessToken(
+        c.get("db"),
         c.env,
         c.req.url,
         accessToken,

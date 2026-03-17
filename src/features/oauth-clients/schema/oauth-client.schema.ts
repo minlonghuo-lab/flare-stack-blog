@@ -16,6 +16,10 @@ export const OAuthScopeListSchema = z
     "Invalid scope",
   );
 
+const PersistedOAuthScopeListSchema = z
+  .array(z.string())
+  .transform((scopes) => scopes.filter((scope) => OAUTH_SCOPE_SET.has(scope)));
+
 export const OAuthConnectionSchema = z.object({
   consentId: z.string(),
   clientId: z.string(),
@@ -26,7 +30,7 @@ export const OAuthConnectionSchema = z.object({
   updatedAt: z.string(),
   public: z.boolean(),
   redirectUris: z.array(z.string()),
-  scopes: OAuthScopeListSchema,
+  scopes: PersistedOAuthScopeListSchema,
 });
 
 const JsonStringArraySchema = z.preprocess((value) => {
@@ -57,8 +61,8 @@ export const OAuthConsentRowSchema = z.object({
   clientId: z.string(),
   createdAt: IsoDateStringSchema,
   updatedAt: IsoDateStringSchema,
-  scopes: OAuthScopeListSchema.or(
-    JsonStringArraySchema.pipe(OAuthScopeListSchema),
+  scopes: PersistedOAuthScopeListSchema.or(
+    JsonStringArraySchema.pipe(PersistedOAuthScopeListSchema),
   ),
 });
 
