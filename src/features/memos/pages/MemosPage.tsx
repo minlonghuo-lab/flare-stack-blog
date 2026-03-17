@@ -1,10 +1,10 @@
 /**
  * 说说页面组件
  * 
- * 独立页面渲染 Memos 说说，支持图片展示
+ * 独立页面渲染 Memos 说说，支持图片展示和点击放大
  */
 
-import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { memo } from "react";
 import type { MemosPost } from "../schema";
 
@@ -40,11 +40,55 @@ export const MemosPage = memo(({ memos }: MemosPageComponentProps) => {
           </p>
         )}
       </section>
+
+      {/* 图片预览模态框 */}
+      <ImageModal />
     </div>
   );
 });
 
 MemosPage.displayName = "MemosPage";
+
+/**
+ * 图片预览模态框组件
+ */
+function ImageModal() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+
+  // 暴露给全局，方便子组件调用
+  if (typeof window !== "undefined") {
+    (window as any).openImageModal = (url: string) => {
+      setImageUrl(url);
+      setIsOpen(true);
+    };
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={() => setIsOpen(false)}
+    >
+      {/* 关闭按钮 */}
+      <button
+        className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
+        onClick={() => setIsOpen(false)}
+      >
+        ✕
+      </button>
+      
+      {/* 图片 */}
+      <img
+        src={imageUrl}
+        alt="预览"
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
 
 /**
  * 说说单项组件
@@ -65,6 +109,16 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
 
   // 获取图片列表
   const images = (memo as any).images || [];
+
+  // 点击图片打开预览
+  const handleImageClick = (url: string) => {
+    if (typeof window !== "undefined" && (window as any).openImageModal) {
+      (window as any).openImageModal(url);
+    } else {
+      // 降级：直接打开
+      window.open(url, "_blank");
+    }
+  };
 
   return (
     <article className="relative pl-8">
@@ -107,16 +161,14 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
           })}
         </div>
 
-        {/* 图片展示 - 透传源站直链 */}
+        {/* 图片展示 - 点击放大 */}
         {images.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-3">
             {images.map((imgUrl: string, index: number) => (
-              <a
+              <div
                 key={index}
-                href={imgUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block aspect-square overflow-hidden rounded-lg bg-muted hover:opacity-90 transition-opacity"
+                className="block aspect-square overflow-hidden rounded-lg bg-muted hover:opacity-90 transition-opacity cursor-pointer"
+                onClick={() => handleImageClick(imgUrl)}
               >
                 <img
                   src={imgUrl}
@@ -124,7 +176,7 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-              </a>
+              </div>
             ))}
           </div>
         )}
