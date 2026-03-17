@@ -104,8 +104,19 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
     });
   };
 
-  // 处理内容，支持简单的换行
-  const contentLines = memo.content.split("\n");
+  // 处理内容，隐藏标签（#xxx）
+  const processContent = (content: string) => {
+    // 移除 #tag 格式的标签
+    const lines = content.split("\n");
+    const processedLines = lines.map(line => {
+      // 移除行首的标签（如 #tag）
+      return line.replace(/^#\S+(\s|$)/, '').trim();
+    });
+    return processedLines.join("\n").trim();
+  };
+
+  const processedContent = processContent(memo.content);
+  const contentLines = processedContent.split("\n");
 
   // 获取图片列表
   const images = (memo as any).images || [];
@@ -115,7 +126,6 @@ const MemosItem = memo(({ memo }: { memo: MemosPost }) => {
     if (typeof window !== "undefined" && (window as any).openImageModal) {
       (window as any).openImageModal(url);
     } else {
-      // 降级：直接打开
       window.open(url, "_blank");
     }
   };
