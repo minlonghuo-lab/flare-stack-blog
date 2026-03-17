@@ -27,7 +27,7 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
   
   // 处理附件
   const images: string[] = [];
-  const fileLinks: { name: string; url: string; type: string }[] = [];
+  const files: { name: string; url: string }[] = [];
   const attachments = (memo as any).attachments || [];
   
   for (const attachment of attachments) {
@@ -43,10 +43,9 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
       images.push(fileUrl);
     } else {
       // 非图片文件
-      fileLinks.push({
+      files.push({
         name: filename,
         url: fileUrl,
-        type: attachment.type || "application/octet-stream",
       });
     }
   }
@@ -59,24 +58,16 @@ function convertMemoToPost(memo: MemosMemo): MemosPost {
     }
   }
   
-  // 处理内容：如果有文件，追加文件链接列表
-  let content = memo.content;
-  if (fileLinks.length > 0) {
-    const fileListHtml = fileLinks
-      .map(f => `<a href="${f.url}" target="_blank" class="memo-file">📎 ${f.name}</a>`)
-      .join("\n");
-    content = content + "\n\n" + fileListHtml;
-  }
-  
   return {
     id,
     slug: `memos-${id}`,
-    content,
+    content: memo.content,
     createdAt: new Date(memo.createTime),
     updatedAt: new Date(memo.updateTime),
     tags: memo.tags,
     pinned: memo.pinned,
     images,
+    files,
   };
 }
 
