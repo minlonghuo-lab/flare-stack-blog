@@ -41,7 +41,7 @@ function PublicLayout() {
       to: "/friend-links" as const,
       id: "friend-links",
     },
-    { label: "m.nav_memos()", to: "/memos" as const, id: "memos" },
+    { label: m.nav_memos(), to: "/memos" as const, id: "memos" },
   ];
 
   const logout = async () => {
