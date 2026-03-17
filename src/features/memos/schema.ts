@@ -38,6 +38,10 @@ export const MemosPostSchema = z.object({
   tags: z.array(z.string()),
   pinned: z.boolean(),
   images: z.array(z.string()).optional(),
+  files: z.array(z.object({
+    name: z.string(),
+    url: z.string(),
+  })).optional(),
 });
 
 export type MemosMemo = z.infer<typeof MemosMemoSchema>;
