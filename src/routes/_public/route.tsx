@@ -41,6 +41,7 @@ function PublicLayout() {
       to: "/friend-links" as const,
       id: "friend-links",
     },
+    { label: "说说", to: "/memos" as const, id: "memos" },
   ];
 
   const logout = async () => {
