@@ -51,6 +51,11 @@ export type MemosPost = z.infer<typeof MemosPostSchema>;
 /**
  * 说说页面 Props
  */
+export interface MemosPageData {
+  memos: MemosPost[];
+  nextPageToken: string;
+}
+
 export interface MemosPageProps {
   memos: MemosPost[];
 }
