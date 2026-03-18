@@ -2,7 +2,7 @@
  * Memos 说说页面 - 无限滚动
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { MemosPost } from "../schema";
 import { m } from "@/paraglide/messages";
 import { memosConfig } from "../config";
@@ -32,11 +32,6 @@ function MemosItem({ memo }: { memo: MemosPost }) {
   const [previewImage, setPreviewImage] = useState("");
   const images = (memo as any).images || [];
 
-  const openPreview = (src: string) => {
-    setPreviewImage(src);
-    setIsPreviewOpen(true);
-  };
-
   return (
     <>
       <article className="relative pl-8">
@@ -47,17 +42,11 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             <time dateTime={memo.createdAt.toISOString()}>{formatDate(memo.createdAt)}</time>
             {memo.pinned && <span className="text-primary font-medium">{m.memos_pinned()}</span>}
           </div>
-          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {processContent(memo.content)}
-          </div>
+          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{processContent(memo.content)}</div>
           {images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((img, idx) => (
-                <div
-                  key={idx}
-                  className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => openPreview(img)}
-                >
+                <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity" onClick={() => { setPreviewImage(img); setIsPreviewOpen(true); }}>
                   <img src={img} alt={`${m.memos_images()} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ))}
@@ -88,9 +77,13 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 使用 ref 跟踪状态，避免闭包问题
   const pageTokenRef = useRef<string>("");
+  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // 初始加载
   useEffect(() => {
@@ -98,6 +91,7 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
       loadMoreMemos("").then(result => {
         setMemos(result.memos);
         pageTokenRef.current = result.nextPageToken;
+        hasMoreRef.current = !!result.nextPageToken;
         setHasMore(!!result.nextPageToken);
         setLoading(false);
       }).catch(() => {
@@ -107,36 +101,54 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
     }
   }, [initialMemos]);
 
-  // 加载更多
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+  // 加载更多函数
+  const loadMore = async () => {
+    // 防止重复调用
+    if (loadingRef.current || !hasMoreRef.current) return;
+    
+    loadingRef.current = true;
     setLoadingMore(true);
+    
     try {
       const result = await loadMoreMemos(pageTokenRef.current);
-      setMemos(prev => [...prev, ...result.memos]);
+      
+      if (result.memos.length > 0) {
+        setMemos(prev => {
+          // 避免重复添加
+          const existingIds = new Set(prev.map(m => m.id));
+          const newMemos = result.memos.filter(m => !existingIds.has(m.id));
+          return [...prev, ...newMemos];
+        });
+      }
+      
       pageTokenRef.current = result.nextPageToken;
+      hasMoreRef.current = !!result.nextPageToken;
       setHasMore(!!result.nextPageToken);
     } catch (e) {
       console.error("Load more error:", e);
     } finally {
+      loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore]);
+  };
 
   // 无限滚动
   useEffect(() => {
     if (!sentinelRef.current) return;
+    
     observerRef.current = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
           loadMore();
         }
       },
       { threshold: 0.1 }
     );
+    
     observerRef.current.observe(sentinelRef.current);
+    
     return () => observerRef.current?.disconnect();
-  }, [hasMore, loadingMore, loadMore]);
+  }, []); // 空依赖数组，只执行一次
 
   if (loading) {
     return (
@@ -176,7 +188,7 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
       </div>
       <div ref={sentinelRef} className="py-8 text-center">
         {loadingMore && <p className="text-muted-foreground">{m.memos_loading()}</p>}
-        {!hasMore && <p className="text-muted-foreground text-sm">- END -</p>}
+        {!hasMore && memos.length > 0 && <p className="text-muted-foreground text-sm">- END -</p>}
       </div>
     </div>
   );
