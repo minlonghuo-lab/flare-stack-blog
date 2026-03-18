@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import type { MemosPost } from "../schema";
+import { m } from "@/paraglide/messages";
 
 interface MemosPageProps {
   memos: MemosPost[];
