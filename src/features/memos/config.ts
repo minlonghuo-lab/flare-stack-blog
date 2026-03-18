@@ -4,7 +4,7 @@
 
 export const memosConfig = {
   /** Memos API 基础 URL */
-  apiBaseUrl: "memos.ssaw.top",
+  apiBaseUrl: "https://memos.ssaw.top",
   
   /** 说说页面显示数量 */
   pageSize: 20,
