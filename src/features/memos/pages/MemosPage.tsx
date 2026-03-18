@@ -2,7 +2,7 @@
  * Memos 说说页面 - 无限滚动
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { MemosPost } from "../schema";
 import { m } from "@/paraglide/messages";
 import { memosConfig } from "../config";
@@ -47,7 +47,7 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((img, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity" onClick={() => { setPreviewImage(img); setIsPreviewOpen(true); }}>
-                  <img src={img} alt={`${m.memos_images()} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={img} alt={m.memos_images()} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ))}
             </div>
@@ -78,15 +78,16 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 使用 ref 跟踪状态
+  // 使用 ref 跟踪所有状态，避免闭包问题
   const pageTokenRef = useRef<string>("");
   const isLoadingRef = useRef(false);
   const hasMoreRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadTriggeredRef = useRef(false);
 
-  // 加载更多函数 - 使用 useCallback
-  const loadMore = useCallback(async () => {
+  // 加载更多说说
+  const loadMore = async () => {
+    // 防止重复调用
     if (isLoadingRef.current || !hasMoreRef.current) return;
     
     isLoadingRef.current = true;
@@ -112,32 +113,37 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
       isLoadingRef.current = false;
       setLoadingMore(false);
     }
+  };
+
+  // 初始加载（只执行一次）
+  useEffect(() => {
+    if (loadTriggeredRef.current) return;
+    loadTriggeredRef.current = true;
+    
+    if (initialMemos.length === 0) {
+      loadMore().finally(() => setLoading(false));
+    }
   }, []);
 
-  // 初始加载
+  // 无限滚动 - 滚动监听
   useEffect(() => {
-    if (initialMemos.length === 0) {
-      loadMore().then(() => setLoading(false)).catch(() => { setError("加载失败"); setLoading(false); });
-    }
-  }, [loadMore, initialMemos]);
+    const handleScroll = () => {
+      if (!sentinelRef.current) return;
+      
+      // 检查哨兵元素是否进入视口
+      const rect = sentinelRef.current.getBoundingClientRect();
+      const sentinelTop = rect.top;
+      const viewportHeight = window.innerHeight;
+      
+      // 当哨兵元素距离视口顶部还有 200px 时开始加载
+      if (sentinelTop < viewportHeight + 200 && hasMoreRef.current && !isLoadingRef.current) {
+        loadMore();
+      }
+    };
 
-  // 无限滚动
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    
-    observerRef.current.observe(sentinelRef.current);
-    
-    return () => observerRef.current?.disconnect();
-  }, [loadMore]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   if (loading) {
     return (
