@@ -5,6 +5,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
+import { m } from "@/paraglide/messages";
 import { getMemosPageData } from "@/features/memos";
 import { MemosPage } from "@/features/memos/pages/MemosPage";
 
@@ -14,8 +15,8 @@ export const Route = createFileRoute("/_public/memos")({
     const { memos } = await getMemosPageData();
     
     return {
-      title: "说说",
-      description: "日常碎碎念",
+      title: m.memos_title(),
+      description: m.memos_desc(),
       memos,
     };
   },
