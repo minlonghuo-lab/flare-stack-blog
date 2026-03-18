@@ -11,7 +11,8 @@ interface MemosPageProps {
 }
 
 function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("zh-CN", {
+  const lang = typeof document !== "undefined" ? document.documentElement.lang || "zh" : "zh";
+  return new Intl.DateTimeFormat(lang, {
     year: "numeric",
     month: "long",
     day: "numeric",
