@@ -47,7 +47,7 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((img, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity" onClick={() => { setPreviewImage(img); setIsPreviewOpen(true); }}>
-                  <img src={img} alt={\`\${m.memos_images()} \${idx + 1}\`} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={img} alt={`${m.memos_images()} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ))}
             </div>
