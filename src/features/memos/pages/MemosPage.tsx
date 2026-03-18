@@ -2,7 +2,7 @@
  * Memos 说说页面 - 无限滚动
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { MemosPost } from "../schema";
 import { m } from "@/paraglide/messages";
 import { memosConfig } from "../config";
@@ -47,7 +47,7 @@ function MemosItem({ memo }: { memo: MemosPost }) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((img, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity" onClick={() => { setPreviewImage(img); setIsPreviewOpen(true); }}>
-                  <img src={img} alt={`${m.memos_images()} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={img} alt={\`\${m.memos_images()} \${idx + 1}\`} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ))}
             </div>
@@ -78,35 +78,18 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 使用 ref 跟踪状态，避免闭包问题
+  // 使用 ref 跟踪状态
   const pageTokenRef = useRef<string>("");
-  const loadingRef = useRef(false);
+  const isLoadingRef = useRef(false);
   const hasMoreRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // 初始加载
-  useEffect(() => {
-    if (initialMemos.length === 0) {
-      loadMoreMemos("").then(result => {
-        setMemos(result.memos);
-        pageTokenRef.current = result.nextPageToken;
-        hasMoreRef.current = !!result.nextPageToken;
-        setHasMore(!!result.nextPageToken);
-        setLoading(false);
-      }).catch(() => {
-        setError("加载失败");
-        setLoading(false);
-      });
-    }
-  }, [initialMemos]);
-
-  // 加载更多函数
-  const loadMore = async () => {
-    // 防止重复调用
-    if (loadingRef.current || !hasMoreRef.current) return;
+  // 加载更多函数 - 使用 useCallback
+  const loadMore = useCallback(async () => {
+    if (isLoadingRef.current || !hasMoreRef.current) return;
     
-    loadingRef.current = true;
+    isLoadingRef.current = true;
     setLoadingMore(true);
     
     try {
@@ -114,7 +97,6 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
       
       if (result.memos.length > 0) {
         setMemos(prev => {
-          // 避免重复添加
           const existingIds = new Set(prev.map(m => m.id));
           const newMemos = result.memos.filter(m => !existingIds.has(m.id));
           return [...prev, ...newMemos];
@@ -127,10 +109,17 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
     } catch (e) {
       console.error("Load more error:", e);
     } finally {
-      loadingRef.current = false;
+      isLoadingRef.current = false;
       setLoadingMore(false);
     }
-  };
+  }, []);
+
+  // 初始加载
+  useEffect(() => {
+    if (initialMemos.length === 0) {
+      loadMore().then(() => setLoading(false)).catch(() => { setError("加载失败"); setLoading(false); });
+    }
+  }, [loadMore, initialMemos]);
 
   // 无限滚动
   useEffect(() => {
@@ -138,7 +127,7 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
     
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
+        if (entries[0].isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
           loadMore();
         }
       },
@@ -148,7 +137,7 @@ export function MemosPage({ initialMemos = [] }: MemosPageProps) {
     observerRef.current.observe(sentinelRef.current);
     
     return () => observerRef.current?.disconnect();
-  }, []); // 空依赖数组，只执行一次
+  }, [loadMore]);
 
   if (loading) {
     return (
