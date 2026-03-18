@@ -166,6 +166,7 @@ export function MemosPage({ memos }: MemosPageProps) {
   return (
     <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20 space-y-16">
       <h1 className="text-4xl md:text-5xl font-serif">{m.memos_title()}</h1>
+        <p className="text-muted-foreground mt-2">{m.memos_desc()}</p>
       
       <div className="space-y-12">
         {memos.map((memo) => (
