@@ -141,6 +141,43 @@ export async function getMemos(pageSize?: number): Promise<MemosPost[]> {
 /**
  * 获取说说页面数据
  */
+/**
+ * 加载更多说说（用于无限滚动）
+ */
+export async function loadMoreMemos(pageToken: string): Promise<{ memos: MemosPost[]; nextPageToken: string }> {
+  try {
+    const apiUrl = pageToken 
+      ? `${memosConfig.apiBaseUrl}/api/v1/memos?pageSize=${memosConfig.pageSizeStep}&pageToken=${pageToken}`
+      : `${memosConfig.apiBaseUrl}/api/v1/memos?pageSize=${memosConfig.pageSizeStep}`;
+    
+    const response = await fetch(apiUrl, {
+      headers: { "Content-Type": "application/json" },
+    });
+    
+    if (!response.ok) {
+      return { memos: [], nextPageToken: "" };
+    }
+    
+    const data = await response.json();
+    const memos = (data.memos || [])
+      .filter((memo: MemosMemo) => memo.visibility === "PUBLIC")
+      .map(convertMemoToPost)
+      .sort((a: MemosPost, b: MemosPost) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    
+    return {
+      memos,
+      nextPageToken: data.nextPageToken || "",
+    };
+  } catch (error) {
+    console.error("[Memos] Load more error:", error);
+    return { memos: [], nextPageToken: "" };
+  }
+}
+
 export async function getMemosPageData(): Promise<MemosPageProps> {
   const memos = await getMemos(memosConfig.pageSize);
   return { memos };
