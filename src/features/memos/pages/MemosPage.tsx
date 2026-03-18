@@ -83,7 +83,7 @@ function MemosItem({ memo }: { memo: MemosPost }) {
               {formatDate(memo.createdAt)}
             </time>
             {memo.pinned && (
-              <span className="text-primary font-medium">置顶</span>
+              <span className="text-primary font-medium">{m.memos_pinned()}</span>
             )}
           </div>
           
@@ -157,15 +157,15 @@ export function MemosPage({ memos }: MemosPageProps) {
   if (!memos || memos.length === 0) {
     return (
       <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20">
-        <h1 className="text-4xl md:text-5xl font-serif mb-12">说说</h1>
-        <p className="text-muted-foreground">暂无说说</p>
+        <h1 className="text-4xl md:text-5xl font-serif mb-12">{m.memos_title()}</h1>
+        <p className="text-muted-foreground">{m.memos_no_content()}</p>
       </div>
     );
   }
   
   return (
     <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20 space-y-16">
-      <h1 className="text-4xl md:text-5xl font-serif">说说</h1>
+      <h1 className="text-4xl md:text-5xl font-serif">{m.memos_title()}</h1>
       
       <div className="space-y-12">
         {memos.map((memo) => (
