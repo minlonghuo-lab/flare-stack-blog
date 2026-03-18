@@ -1,13 +1,15 @@
 /**
- * Memos 说说页面组件 - 支持图片和文件展示
+ * Memos 说说页面 - 无限滚动
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { MemosPost } from "../schema";
 import { m } from "@/paraglide/messages";
+import { memosConfig } from "../config";
+import { loadMoreMemos } from "../service";
 
 interface MemosPageProps {
-  memos: MemosPost[];
+  initialMemos?: MemosPost[];
 }
 
 function formatDate(date: Date): string {
@@ -21,158 +23,160 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-/**
- * 处理内容：移除标签、保留换行
- */
 function processContent(content: string): string {
-  const lines = content.split("\n");
-  const processedLines = lines.map((line) => {
-    return line.replace(/^#\S+(\s|$)/, "").trim();
-  });
-  return processedLines.join("\n").trim();
+  return content.split("\n").map(line => line.replace(/^#\S+(\s|$)/, "")).join("\n").trim();
 }
 
-/**
- * 说说项组件
- */
 function MemosItem({ memo }: { memo: MemosPost }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  
-  const processedContent = processContent(memo.content);
-  const images = memo.images || [];
-  const files = (memo as any).files || [];
-  
-  const handleImageClick = (url: string) => {
-    setImageUrl(url);
-    setIsOpen(true);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+  const images = (memo as any).images || [];
+
+  const openPreview = (src: string) => {
+    setPreviewImage(src);
+    setIsPreviewOpen(true);
   };
-  
-  const ImageModal = () => {
-    if (!isOpen) return null;
-    
-    return (
-      <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-        onClick={() => setIsOpen(false)}
-      >
-        <button
-          className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
-          onClick={() => setIsOpen(false)}
-        >
-          ✕
-        </button>
-        <img
-          src={imageUrl}
-          alt="预览"
-          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-    );
-  };
-  
+
   return (
     <>
       <article className="relative pl-8">
         <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
         <div className="absolute left-[-3px] top-2 w-2 h-2 rounded-full bg-foreground/30" />
-        
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground/60">
-            <time dateTime={memo.createdAt.toISOString()}>
-              {formatDate(memo.createdAt)}
-            </time>
-            {memo.pinned && (
-              <span className="text-primary font-medium">{m.memos_pinned()}</span>
-            )}
+            <time dateTime={memo.createdAt.toISOString()}>{formatDate(memo.createdAt)}</time>
+            {memo.pinned && <span className="text-primary font-medium">{m.memos_pinned()}</span>}
           </div>
-          
           <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {processedContent}
+            {processContent(memo.content)}
           </div>
-          
-          {/* 图片网格 */}
           {images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-              {images.map((img, index) => (
-                <div 
-                  key={index}
+              {images.map((img, idx) => (
+                <div
+                  key={idx}
                   className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => handleImageClick(img)}
+                  onClick={() => openPreview(img)}
                 >
-                  <img 
-                    src={img} 
-                    alt={`${m.memos_images()} ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                  <img src={img} alt={`${m.memos_images()} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ))}
             </div>
           )}
-          
-          {/* 文件列表 */}
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {files.map((file, index) => (
-                <a
-                  key={index}
-                  href={file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
-                >
-                  <span className="text-base">📎</span>
-                  <span>{file.name}</span>
-                </a>
-              ))}
-            </div>
-          )}
-          
-          {/* 标签 */}
           {memo.tags && memo.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {memo.tags.filter((t) => !t.startsWith("#")).map((tag, index) => (
-                <span 
-                  key={index}
-                  className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground"
-                >
-                  #{tag}
-                </span>
+              {memo.tags.filter(t => !t.startsWith("#")).map((tag, idx) => (
+                <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">#{tag}</span>
               ))}
             </div>
           )}
         </div>
       </article>
-      
-      <ImageModal />
+      {isPreviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsPreviewOpen(false)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl w-10 h-10" onClick={() => setIsPreviewOpen(false)}>✕</button>
+          <img src={previewImage} alt="Preview" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
     </>
   );
 }
 
-/**
- * 说说页面主组件
- */
-export function MemosPage({ memos }: MemosPageProps) {
-  if (!memos || memos.length === 0) {
+export function MemosPage({ initialMemos = [] }: MemosPageProps) {
+  const [memos, setMemos] = useState<MemosPost[]>(initialMemos);
+  const [loading, setLoading] = useState(initialMemos.length === 0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const pageTokenRef = useRef<string>("");
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // 初始加载
+  useEffect(() => {
+    if (initialMemos.length === 0) {
+      loadMoreMemos("").then(result => {
+        setMemos(result.memos);
+        pageTokenRef.current = result.nextPageToken;
+        setHasMore(!!result.nextPageToken);
+        setLoading(false);
+      }).catch(() => {
+        setError("加载失败");
+        setLoading(false);
+      });
+    }
+  }, [initialMemos]);
+
+  // 加载更多
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await loadMoreMemos(pageTokenRef.current);
+      setMemos(prev => [...prev, ...result.memos]);
+      pageTokenRef.current = result.nextPageToken;
+      setHasMore(!!result.nextPageToken);
+    } catch (e) {
+      console.error("Load more error:", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore]);
+
+  // 无限滚动
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    observerRef.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observerRef.current.observe(sentinelRef.current);
+    return () => observerRef.current?.disconnect();
+  }, [hasMore, loadingMore, loadMore]);
+
+  if (loading) {
     return (
       <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20">
-        <h1 className="text-4xl md:text-5xl font-serif mb-12">{m.memos_title()}</h1>
-        <p className="text-muted-foreground">{m.memos_no_content()}</p>
+        <h1 className="text-4xl md:text-5xl font-serif mb-4">{m.memos_title()}</h1>
+        <p className="text-muted-foreground mt-2">{m.memos_desc()}</p>
+        <p className="text-center py-20 text-muted-foreground">{m.memos_loading()}</p>
       </div>
     );
   }
-  
-  return (
-    <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20 space-y-16">
-      <h1 className="text-4xl md:text-5xl font-serif">{m.memos_title()}</h1>
+
+  if (error) {
+    return (
+      <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20">
+        <h1 className="text-4xl md:text-5xl font-serif mb-4">{m.memos_title()}</h1>
+        <p className="text-center py-20 text-destructive">{error}</p>
+      </div>
+    );
+  }
+
+  if (memos.length === 0) {
+    return (
+      <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20">
+        <h1 className="text-4xl md:text-5xl font-serif mb-4">{m.memos_title()}</h1>
         <p className="text-muted-foreground mt-2">{m.memos_desc()}</p>
-      
-      <div className="space-y-12">
-        {memos.map((memo) => (
-          <MemosItem key={memo.id} memo={memo} />
-        ))}
+        <p className="text-center py-20 text-muted-foreground">{m.memos_no_content()}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20">
+      <h1 className="text-4xl md:text-5xl font-serif mb-2">{m.memos_title()}</h1>
+      <p className="text-muted-foreground mt-2">{m.memos_desc()}</p>
+      <div className="space-y-12 mt-12">
+        {memos.map(memo => <MemosItem key={memo.id} memo={memo} />)}
+      </div>
+      <div ref={sentinelRef} className="py-8 text-center">
+        {loadingMore && <p className="text-muted-foreground">{m.memos_loading()}</p>}
+        {!hasMore && <p className="text-muted-foreground text-sm">- END -</p>}
       </div>
     </div>
   );
