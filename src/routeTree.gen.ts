@@ -22,6 +22,7 @@ import { Route as PublicUnsubscribeRouteImport } from './routes/_public/unsubscr
 import { Route as PublicSearchRouteImport } from './routes/_public/search'
 import { Route as PublicPostsRouteImport } from './routes/_public/posts'
 import { Route as PublicFriendLinksRouteImport } from './routes/_public/friend-links'
+import { Route as PublicMemosRouteImport } from './routes/_public/memos'
 import { Route as AuthVerifyEmailRouteImport } from './routes/_auth/verify-email'
 import { Route as AuthResetLinkRouteImport } from './routes/_auth/reset-link'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
@@ -95,6 +96,11 @@ const PublicPostsRoute = PublicPostsRouteImport.update({
   getParentRoute: () => PublicRouteRoute,
 } as any)
 const PublicFriendLinksRoute = PublicFriendLinksRouteImport.update({
+const PublicMemosRoute = PublicMemosRouteImport.update({
+  path: '/memos',
+  getParentRoute: () => PublicRoute,
+});
+
   id: '/friend-links',
   path: '/friend-links',
   getParentRoute: () => PublicRouteRoute,
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/reset-link': typeof AuthResetLinkRoute
   '/verify-email': typeof AuthVerifyEmailRoute
   '/friend-links': typeof PublicFriendLinksRoute
+    '/memos': typeof PublicMemosRoute,
   '/posts': typeof PublicPostsRoute
   '/search': typeof PublicSearchRoute
   '/unsubscribe': typeof PublicUnsubscribeRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/reset-link': typeof AuthResetLinkRoute
   '/verify-email': typeof AuthVerifyEmailRoute
   '/friend-links': typeof PublicFriendLinksRoute
+    '/memos': typeof PublicMemosRoute,
   '/posts': typeof PublicPostsRoute
   '/search': typeof PublicSearchRoute
   '/unsubscribe': typeof PublicUnsubscribeRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/_auth/reset-link': typeof AuthResetLinkRoute
   '/_auth/verify-email': typeof AuthVerifyEmailRoute
   '/_public/friend-links': typeof PublicFriendLinksRoute
+    '/_public/memos': typeof PublicMemosRoute,
   '/_public/posts': typeof PublicPostsRoute
   '/_public/search': typeof PublicSearchRoute
   '/_public/unsubscribe': typeof PublicUnsubscribeRoute
