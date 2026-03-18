@@ -102,7 +102,7 @@ function MemosItem({ memo }: { memo: MemosPost }) {
                 >
                   <img 
                     src={img} 
-                    alt={`图片 ${index + 1}`}
+                    alt={`${m.memos_images()} ${index + 1}`}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
