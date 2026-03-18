@@ -1,13 +1,19 @@
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import { getAuth } from "@/lib/auth/auth.server";
 import { serverEnv } from "@/lib/env/server.env";
-import { findOAuthAccessTokenByToken } from "../data/oauth-provider.data";
+import {
+  findOAuthAccessTokenByToken,
+  findOAuthClientByClientId,
+  findOAuthConsentByClientIdAndUserId,
+  findSessionById,
+} from "../data/oauth-provider.data";
 import {
   getOAuthProtectedResourceUrl,
   type OAuthScope,
 } from "../oauth-provider.config";
 import type { OAuthScopeRequest } from "../schema/oauth-provider.schema";
 import {
+  assertJwtAccessTokenIsActive,
   assertOpaqueAccessTokenIsActive,
   assertOpaqueAccessTokenScopes,
   buildOpaqueAccessTokenPayload,
@@ -61,7 +67,7 @@ async function verifyJwtOAuthAccessToken(
   const jwtMetadata = readJwtVerificationMetadata(accessToken);
 
   try {
-    return await verifyLocalOAuthJwtAccessToken({
+    const jwt = await verifyLocalOAuthJwtAccessToken({
       accessToken,
       audience,
       fetchJwks: () => fetchLocalOAuthJwks(db, env),
@@ -69,6 +75,38 @@ async function verifyJwtOAuthAccessToken(
       requestUrl,
       requiredScopes,
     });
+    const clientId =
+      typeof jwt.client_id === "string"
+        ? jwt.client_id
+        : typeof jwt.azp === "string"
+          ? jwt.azp
+          : null;
+    const sessionId = typeof jwt.sid === "string" ? jwt.sid : null;
+    const userId = typeof jwt.sub === "string" ? jwt.sub : null;
+    const [oauthClient, oauthConsent, session] = await Promise.all([
+      clientId
+        ? findOAuthClientByClientId(db, clientId)
+        : Promise.resolve(null),
+      clientId && userId
+        ? findOAuthConsentByClientIdAndUserId(db, clientId, userId)
+        : Promise.resolve(null),
+      sessionId ? findSessionById(db, sessionId) : Promise.resolve(null),
+    ]);
+
+    assertJwtAccessTokenIsActive(
+      requestUrl,
+      {
+        clientId,
+        oauthClient: oauthClient ?? null,
+        oauthConsent: oauthConsent ?? null,
+        session: session ?? null,
+        sessionId,
+        userId,
+      },
+      new Date(),
+    );
+
+    return jwt;
   } catch (error) {
     console.error(
       JSON.stringify({
